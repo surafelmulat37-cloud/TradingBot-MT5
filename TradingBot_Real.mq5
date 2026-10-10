@@ -1,23 +1,24 @@
 //+------------------------------------------------------------------+//| TradingBot_Real.mq5                                               |//| Educational. Test on demo first. No profit guarantee.            |//+------------------------------------------------------------------+
 #property copyright "Educational"
-#property version   "1.10"
+#property version   "1.20"
 
 #include <Trade\Trade.mqh>
 
-input double RiskPercent       = 0.5;     // risk % of balance per trade
-input double RewardRatio       = 2.0;     // reward-to-risk ratio
-input int    FastEMA           = 50;
-input int    SlowEMA           = 200;
-input int    StructureLookback = 50;
+// XAUUSD-optimized defaults for a more conservative gold strategy.
+input double RiskPercent       = 0.25;    // lower risk for volatile gold
+input double RewardRatio       = 2.5;     // slightly wider reward target
+input int    FastEMA           = 20;      // quicker trend reaction on gold
+input int    SlowEMA           = 50;      // smoother trend filter
+input int    StructureLookback = 40;      // trend structure lookback
 input int    ATRPeriod         = 14;
-input double ATR_SL_Mult       = 1.5;
-input int    MaxTradesPerDay   = 3;
-input double MaxDailyLossPct   = 3.0;
-input double MaxSpreadPoints   = 30;
-input double MaxLot            = 0.10;    // hard cap
+input double ATR_SL_Mult       = 1.8;     // wider stop for gold volatility
+input int    MaxTradesPerDay   = 2;       // conservative daily trade count
+input double MaxDailyLossPct   = 1.5;     // stop after 1.5% daily drawdown
+input double MaxSpreadPoints   = 40;      // gold-friendly spread cap
+input double MaxLot            = 0.05;    // hard cap for safety on gold
 input int    MaxOpenPositions  = 1;
-input double MinFreeMargin     = 100.0;   // USD minimum free margin
-input int    EntryCooldownBars = 2;       // avoid repeated entries in same direction
+input double MinFreeMargin     = 50.0;    // USD minimum free margin
+input int    EntryCooldownBars = 3;       // avoid repaint-like repeated entries
 input bool   EnableTrading     = false;   // keep false until validated
 input ulong  Magic             = 20251010;
 input bool   EnableTelegram    = false;
@@ -316,6 +317,5 @@ void OnTick()
 
 void OnDeinit(const int reason)
 {
-   // Optional: log deinit reason if needed.
    Print("EA stopped. Reason: ", reason);
 }
