@@ -1,25 +1,27 @@
 //+------------------------------------------------------------------+//| TradingBot_Real.mq5                                               |//| Educational. Test on demo first. No profit guarantee.            |//+------------------------------------------------------------------+
 #property copyright "Educational"
-#property version   "1.20"
+#property version   "1.30"
 
 #include <Trade\Trade.mqh>
 
-// XAUUSD-optimized defaults for a more conservative gold strategy.
-input double RiskPercent       = 0.25;    // lower risk for volatile gold
-input double RewardRatio       = 2.5;     // slightly wider reward target
-input int    FastEMA           = 20;      // quicker trend reaction on gold
-input int    SlowEMA           = 50;      // smoother trend filter
-input int    StructureLookback = 40;      // trend structure lookback
+input double RiskPercent       = 0.20;    // lower risk for gold
+input double RewardRatio       = 2.8;     // realistic reward target
+input int    FastEMA           = 20;
+input int    SlowEMA           = 50;
+input int    StructureLookback = 40;
 input int    ATRPeriod         = 14;
-input double ATR_SL_Mult       = 1.8;     // wider stop for gold volatility
-input int    MaxTradesPerDay   = 2;       // conservative daily trade count
-input double MaxDailyLossPct   = 1.5;     // stop after 1.5% daily drawdown
-input double MaxSpreadPoints   = 40;      // gold-friendly spread cap
-input double MaxLot            = 0.05;    // hard cap for safety on gold
+input double ATR_SL_Mult       = 1.8;
+input int    MaxTradesPerDay   = 2;
+input double MaxDailyLossPct   = 1.5;
+input double MaxSpreadPoints   = 40;
+input double MaxLot            = 0.05;
 input int    MaxOpenPositions  = 1;
-input double MinFreeMargin     = 50.0;    // USD minimum free margin
-input int    EntryCooldownBars = 3;       // avoid repaint-like repeated entries
-input bool   EnableTrading     = false;   // keep false until validated
+input double MinFreeMargin     = 50.0;
+input int    EntryCooldownBars = 3;
+input bool   TradeOnlySession  = true;
+input int    SessionStartHour  = 7;       // London start
+input int    SessionEndHour    = 18;      // New York close (approx)
+input bool   EnableTrading     = false;   // test first on demo
 input ulong  Magic             = 20251010;
 input bool   EnableTelegram    = false;
 input string TelegramToken     = "";
@@ -65,6 +67,18 @@ void SendTG(string text)
 
    if(res == -1)
       Print("Telegram error: ", GetLastError());
+}
+
+bool SessionAllowed()
+{
+   if(!TradeOnlySession)
+      return true;
+
+   MqlDateTime st;
+   TimeToStruct(TimeCurrent(), st);
+
+   int h = st.hour;
+   return (h >= SessionStartHour && h < SessionEndHour);
 }
 
 int Trend()
@@ -277,6 +291,9 @@ void OnTick()
       return;
    lastBar = cur;
 
+   if(!SessionAllowed())
+      return;
+
    int bars = Bars(_Symbol, _Period);
    if(bars < SlowEMA + 20)
       return;
@@ -301,13 +318,16 @@ void OnTick()
    double buffer = atr[1];
    int currentBar = bars - 1;
 
-   if(trend == 1 && NearSupport(price, buffer) && BullishPin() && CheckCooldown(currentBar, lastBuySignalBar))
+   bool buySetup = (trend == 1 && NearSupport(price, buffer) && BullishPin() && CheckCooldown(currentBar, lastBuySignalBar));
+   bool sellSetup = (trend == -1 && NearResistance(price, buffer) && BearishPin() && CheckCooldown(currentBar, lastSellSignalBar));
+
+   if(buySetup)
    {
       SendTG("Signal BUY " + _Symbol + " | trend=up | atr=" + DoubleToString(atr[1], 5));
       if(EnableTrading)
          TryBuy(atr[1]);
    }
-   else if(trend == -1 && NearResistance(price, buffer) && BearishPin() && CheckCooldown(currentBar, lastSellSignalBar))
+   else if(sellSetup)
    {
       SendTG("Signal SELL " + _Symbol + " | trend=down | atr=" + DoubleToString(atr[1], 5));
       if(EnableTrading)
